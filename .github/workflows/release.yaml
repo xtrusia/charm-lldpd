@@ -24,11 +24,20 @@ jobs:
     uses: ./.github/workflows/ci.yaml
 
   release-to-charmhub:
+    strategy:
+      matrix:
+        platforms:
+          - ubuntu-20.04-amd64
+          - ubuntu-22.04-amd64
     name: Release to CharmHub
     needs:
       - ci-tests
     runs-on: ubuntu-latest
     steps:
+      - name: Download built charm
+        uses: actions/download-artifact@v4
+        with:
+          name: lldpd-${{ matrix.platforms }}
       - name: Checkout
         uses: actions/checkout@v4
       - name: Select charmhub channel
@@ -40,3 +49,4 @@ jobs:
           credentials: "${{ secrets.CHARMCRAFT_AUTH }}"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           channel: "${{ steps.channel.outputs.name }}"
+          built-charm-path: lldpd_${{ matrix.platforms }}.charm
