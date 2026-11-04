@@ -65,7 +65,7 @@ jobs:
 
   integration-test:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         bases:
           - ubuntu@20.04
@@ -97,3 +97,16 @@ jobs:
           charmcraft-channel: 4.x/stable
       - name: Run tests
         run: tox run -e integration -- --charm-base=${{ matrix.bases }}
+      - name: Dump charmcraft build instance logs
+        if: failure()
+        run: |
+          uname -a
+          sudo lxc version
+          tail -n 200 ~/.local/state/charmcraft/log/*.log || true
+          for i in $(sudo lxc --project charmcraft list --format csv -c n); do
+            echo "=== $i"
+            sudo lxc --project charmcraft start "$i" 2>/dev/null || true
+            sudo lxc --project charmcraft exec "$i" -- systemctl status snapd.service --no-pager -l || true
+            sudo lxc --project charmcraft exec "$i" -- journalctl -u snapd -n 200 --no-pager || true
+          done
+          sudo dmesg | grep -iE 'apparmor|denied' | tail -n 50 || true
